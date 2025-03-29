@@ -24,9 +24,9 @@ def parse_args():
     # 数据配置
     parser.add_argument('--batch_size', type=int, default=32, help='批处理大小')
     parser.add_argument('--num_workers', type=int, default=4, help='数据加载器工作进程数')
-    parser.add_argument('--train_data_path', type=str, default="data/ForenSynths/train", help='训练数据路径')
-    parser.add_argument('--val_data_path', type=str, default="data/ForenSynths/val", help='验证数据路径')
-    parser.add_argument('--test_data_path', type=str, default="data/Chameleon/test", help='测试数据路径')
+    parser.add_argument('--train_data_path', type=str, default="data/train", help='包含0_real和1_fake文件夹的训练数据路径')
+    parser.add_argument('--val_data_path', type=str, default="data/val", help='包含0_real和1_fake文件夹的验证数据路径')
+    parser.add_argument('--test_data_path', type=str, default="data/test", help='包含0_real和1_fake文件夹的测试数据路径')
     parser.add_argument('--image_size', type=int, default=224, help='输入图像尺寸')
     
     # 模型配置
@@ -38,6 +38,8 @@ def parse_args():
     # 纹理分析配置
     parser.add_argument('--texture_patch_size', type=int, default=32, help='纹理分析的patch尺寸')
     parser.add_argument('--num_texture_patches', type=int, default=64, help='纹理分析的patch数量')
+    parser.add_argument('--num_patches', type=int, default=9, help='纹理重构使用的patch数量')
+    parser.add_argument('--dct_window_size', type=int, default=32, help='DCT变换的窗口大小')
     
     # 训练配置
     parser.add_argument('--num_epochs', type=int, default=20, help='训练轮数')

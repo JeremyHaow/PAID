@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from .patch_module import AdaptivePatchSelector, PatchShuffleModule
 from .texture_module import TextureContrastModule
 from .fusion_module import FeatureFusionModule
+from .texture_analysis import EnhancedTextureAnalysisModule
 
 class MSTD(nn.Module):
     """
@@ -34,10 +35,12 @@ class MSTD(nn.Module):
         # 高通滤波器 (来自SRM，用于提取频率特征)
         self.srm_filters = self._init_srm_filters()
         
-        # 丰富-贫乏纹理对比模块
-        self.texture_contrast = TextureContrastModule(
+        # 增强版纹理分析模块
+        self.texture_analysis = EnhancedTextureAnalysisModule(
             patch_size=args.texture_patch_size,
-            num_patches=args.num_texture_patches
+            output_size=args.image_size,
+            num_patches=args.num_patches,
+            dct_window_size=args.dct_window_size
         )
         
         # 特征融合模块
@@ -121,9 +124,8 @@ class MSTD(nn.Module):
             patch_features = self.clip_encoder(shuffled_x)
             multi_scale_features.append(patch_features)
         
-        # 3. 纹理对比度特征
-        rich_texture, poor_texture = self.texture_contrast.extract_texture_regions(x)
-        texture_contrast_features = self.texture_contrast(rich_texture, poor_texture)
+        # 3. 使用增强版纹理分析模块提取特征
+        texture_embedding, rich_features, poor_features = self.texture_analysis(x)
         
         # 4. 频率域特征
         freq_features = []
@@ -132,11 +134,11 @@ class MSTD(nn.Module):
             srm_output = filter_module(x)
             freq_features.append(self._process_freq_features(srm_output))
         
-        # 特征融合
+        # 特征融合 - 包括新增的纹理分析特征
         fused_features = self.feature_fusion(
             semantic_features, 
             multi_scale_features, 
-            texture_contrast_features, 
+            texture_embedding,  # 使用新的纹理嵌入替代原来的texture_contrast_features
             freq_features
         )
         

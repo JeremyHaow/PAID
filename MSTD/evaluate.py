@@ -31,23 +31,18 @@ def evaluate(model, data_loader, args, save_plots=True):
     all_labels = []
     
     with torch.no_grad():
-        for real_batch, fake_batch in tqdm(data_loader, desc="Evaluating"):
-            real_imgs, real_labels = real_batch
-            fake_imgs, fake_labels = fake_batch
-            
-            real_imgs, real_labels = real_imgs.to(args.device), real_labels.to(args.device)
-            fake_imgs, fake_labels = fake_imgs.to(args.device), fake_labels.to(args.device)
-            
-            # 合并图像和标签
-            all_imgs = torch.cat([real_imgs, fake_imgs], dim=0)
-            batch_labels = torch.cat([real_labels, fake_labels], dim=0)
+        for batch_data in tqdm(data_loader, desc="Evaluating"):
+            # 适应新的数据加载器格式
+            images, labels = batch_data
+            images = images.to(args.device)
+            labels = labels.to(args.device)
             
             # 前向传播
-            outputs = model(all_imgs)
+            outputs = model(images)
             
             # 保存预测结果
             all_outputs.append(outputs)
-            all_labels.append(batch_labels)
+            all_labels.append(labels)
     
     # 连接所有预测结果和标签
     all_outputs = torch.cat(all_outputs, dim=0).cpu().numpy()

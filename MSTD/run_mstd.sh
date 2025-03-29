@@ -25,6 +25,8 @@ show_help() {
     echo "  --data PATH   指定数据根目录"
     echo "  --adv         启用对抗训练"
     echo "  --high-res    使用高分辨率设置 (384x384)"
+    echo "  --patches INT 指定纹理重构使用的patch数量 (默认: 9)"
+    echo "  --dct-size INT DCT变换的窗口大小 (默认: 32)"
     echo ""
     echo "示例:"
     echo "  ./run_mstd.sh train --gpu 0 --batch 64 --epochs 30"
@@ -53,6 +55,8 @@ CHECKPOINT=""
 CONFIG_FILE=""
 DATA_ROOT=""
 IMAGE_SIZE=224
+NUM_PATCHES=9
+DCT_WINDOW_SIZE=32
 EXTRA_ARGS=""
 
 # 解析选项
@@ -100,6 +104,14 @@ while [[ $# -gt 0 ]]; do
             IMAGE_SIZE=384
             shift
             ;;
+        --patches)
+            NUM_PATCHES="$2"
+            shift 2
+            ;;
+        --dct-size)
+            DCT_WINDOW_SIZE="$2"
+            shift 2
+            ;;
         --help)
             show_help
             exit 0
@@ -116,7 +128,7 @@ done
 export CUDA_VISIBLE_DEVICES=$GPU
 
 # 构建基本命令
-CMD="python main.py --mode $COMMAND --batch_size $BATCH_SIZE --num_epochs $EPOCHS --learning_rate $LEARNING_RATE --base_model $MODEL --image_size $IMAGE_SIZE"
+CMD="python main.py --mode $COMMAND --batch_size $BATCH_SIZE --num_epochs $EPOCHS --learning_rate $LEARNING_RATE --base_model $MODEL --image_size $IMAGE_SIZE --num_patches $NUM_PATCHES --dct_window_size $DCT_WINDOW_SIZE"
 
 # 添加额外参数
 if [ ! -z "$CHECKPOINT" ]; then
@@ -127,7 +139,9 @@ if [ ! -z "$CONFIG_FILE" ]; then
     CMD="$CMD --config_file $CONFIG_FILE"
 fi
 
+# 如果提供了数据根目录，构造训练、验证和测试路径
 if [ ! -z "$DATA_ROOT" ]; then
+    # 直接指向包含0_real和1_fake的目录
     CMD="$CMD --train_data_path $DATA_ROOT/train --val_data_path $DATA_ROOT/val --test_data_path $DATA_ROOT/test"
 fi
 

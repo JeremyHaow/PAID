@@ -89,31 +89,36 @@ def train(args):
         }
         
         pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{args.num_epochs} [Train]")
-        for real_batch, fake_batch in pbar:
-            real_imgs, real_labels = real_batch
-            fake_imgs, fake_labels = fake_batch
+        for batch_data in pbar:
+            # 适应新的数据加载器格式
+            images, labels = batch_data
+            images = images.to(args.device)
+            labels = labels.to(args.device)
             
-            real_imgs, real_labels = real_imgs.to(args.device), real_labels.to(args.device)
-            fake_imgs, fake_labels = fake_imgs.to(args.device), fake_labels.to(args.device)
+            # 优化器梯度清零
+            optimizer.zero_grad()
             
-            # 对抗训练步骤
-            loss = adv_trainer.train_step(real_imgs, fake_imgs)
-            train_loss += loss
+            # 前向传播
+            outputs = model(images)
+            
+            # 计算损失
+            loss = torch.nn.functional.binary_cross_entropy(outputs, labels)
+            
+            # 反向传播
+            loss.backward()
+            optimizer.step()
+            
+            train_loss += loss.item()
             
             # 更新进度条
-            pbar.set_postfix(loss=f"{loss:.4f}")
+            pbar.set_postfix(loss=f"{loss.item():.4f}")
             
-            # 预测结果用于计算指标
-            with torch.no_grad():
-                all_imgs = torch.cat([real_imgs, fake_imgs], dim=0)
-                all_labels = torch.cat([real_labels, fake_labels], dim=0)
-                
-                outputs = model(all_imgs)
-                batch_metrics = DetectionMetrics.calculate_metrics(outputs, all_labels)
-                
-                # 更新累计指标
-                for k in train_metrics:
-                    train_metrics[k] += batch_metrics[k]
+            # 计算指标
+            batch_metrics = DetectionMetrics.calculate_metrics(outputs, labels)
+            
+            # 更新累计指标
+            for k in train_metrics:
+                train_metrics[k] += batch_metrics[k]
         
         # 计算平均值
         train_loss /= len(train_loader)
@@ -133,28 +138,22 @@ def train(args):
         
         with torch.no_grad():
             pbar = tqdm(val_loader, desc=f"Epoch {epoch+1}/{args.num_epochs} [Val]")
-            for real_batch, fake_batch in pbar:
-                real_imgs, real_labels = real_batch
-                fake_imgs, fake_labels = fake_batch
-                
-                real_imgs, real_labels = real_imgs.to(args.device), real_labels.to(args.device)
-                fake_imgs, fake_labels = fake_imgs.to(args.device), fake_labels.to(args.device)
-                
-                # 合并图像和标签
-                all_imgs = torch.cat([real_imgs, fake_imgs], dim=0)
-                batch_labels = torch.cat([real_labels, fake_labels], dim=0)
+            for batch_data in pbar:
+                # 适应新的数据加载器格式
+                images, labels = batch_data
+                images = images.to(args.device)
+                labels = labels.to(args.device)
                 
                 # 前向传播
-                outputs = model(all_imgs)
+                outputs = model(images)
                 
                 # 计算损失
-                # 注：这里简化处理，实际上需要提取语义特征和纹理特征
-                batch_loss = torch.nn.functional.binary_cross_entropy(outputs, batch_labels)
+                batch_loss = torch.nn.functional.binary_cross_entropy(outputs, labels)
                 val_loss += batch_loss.item()
                 
                 # 保存预测结果
                 all_outputs.append(outputs)
-                all_labels.append(batch_labels)
+                all_labels.append(labels)
                 
                 # 更新进度条
                 pbar.set_postfix(loss=f"{batch_loss.item():.4f}")
